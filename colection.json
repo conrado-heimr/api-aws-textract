@@ -1,0 +1,165 @@
+{
+	"info": {
+		"_postman_id": "a9b8c7d6-e5f4-3210-9876-54321fedcba0",
+		"name": "AWS Textract FastAPI",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_collection_link": "https://www.postman.com/collections/a9b8c7d6-e5f4-3210-9876-54321fedcba0"
+	},
+	"item": [
+		{
+			"name": "Analyze Document (Upload File)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/Caminho/para/seu/documento.pdf" 
+						}
+					]
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/analyze_document/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"analyze_document",
+						""
+					]
+				},
+				"description": "Inicia a análise de um documento enviando um arquivo local. Substitua '/Caminho/para/seu/documento.pdf' pelo caminho real do arquivo no seu sistema."
+			},
+			"response": []
+		},
+		{
+			"name": "Analyze Document (Via URL)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "document_url",
+							"value": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/analyze_document/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"analyze_document",
+						""
+					]
+				},
+				"description": "Inicia a análise de um documento fornecendo uma URL. Substitua a URL de exemplo pela URL real do seu documento."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Analysis Status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/get_analysis_status/{{job_id}}",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"get_analysis_status",
+						"{{job_id}}"
+					]
+				},
+				"description": "Verifica o status de um trabalho de análise do Textract. Substitua '{{job_id}}' pelo Job ID retornado pelo endpoint 'Analyze Document'."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Analysis Results",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/get_analysis_results/{{job_id}}",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"get_analysis_results",
+						"{{job_id}}"
+					]
+				},
+				"description": "Obtém o texto extraído e limpo de um trabalho de análise do Textract. Substitua '{{job_id}}' pelo Job ID retornado pelo endpoint 'Analyze Document'. Aguarda a conclusão se o job ainda estiver em andamento."
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Basic test for Analyze Document to extract job_id",
+					"if (pm.request.url.path.includes('analyze_document')) {",
+					"    const response = pm.response.json();",
+					"    if (response && response.job_id) {",
+					"        pm.environment.set('job_id', response.job_id);",
+					"        console.log('Extracted job_id:', response.job_id);",
+					"    }",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "job_id",
+			"value": ""
+		}
+	]
+}
