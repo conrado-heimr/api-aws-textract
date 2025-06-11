@@ -26,8 +26,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# O dicionário textract_jobs_status foi removido, pois o fluxo principal agora é síncrono.
-# Os endpoints de status e resultados (GET) não funcionarão mais para jobs históricos após um restart.
+# --- Configuração do Diretório Temporário ---
+# IMPORTANTE: Garanta que o usuário que executa esta aplicação tenha permissões de escrita neste diretório.
+# Em Linux, /tmp é um diretório comum, mas /var/tmp ou um diretório específico da aplicação pode ser melhor.
+TEMP_FILES_DIR = os.getenv("TEMP_FILES_DIR", "/tmp") # Pega do ENV ou usa /tmp como padrão
 
 # --- Funções Auxiliares Comuns ---
 
@@ -80,8 +82,9 @@ async def analyze_document(
     file_extension: str
     original_source_identifier: str # Identifica se veio de arquivo ou URL
     s3_document_key: str
-    local_temp_filepath: str = f"/tmp/{uuid.uuid4()}" # Base para o caminho temporário local
-    print(f"local_temp_filepath: {local_temp_filepath}")
+    # Constrói o caminho temporário usando o diretório configurado
+    local_temp_filepath: str = os.path.join(TEMP_FILES_DIR, str(uuid.uuid4()))
+    print(f"local_temp_filepath (base): {local_temp_filepath}")
     job_id: str = "" # Inicializa job_id para garantir que esteja definido
 
     try:
@@ -97,6 +100,7 @@ async def analyze_document(
                 raise HTTPException(status_code=400, detail="Formato de arquivo não suportado. Use PDF, PNG ou JPEG.")
 
             # Salva o arquivo enviado localmente (temporariamente)
+            print(f"Tentando salvar arquivo em '{local_temp_filepath}'")
             async with aiofiles.open(local_temp_filepath, 'wb') as out_file:
                 while content := await file.read(1024):  # Lê em chunks
                     await out_file.write(content)
@@ -106,11 +110,14 @@ async def analyze_document(
             print(f"Processando documento de URL: {document_url}")
             original_source_identifier = document_url # Para fins de registro, usa a URL como "nome original"
             async with httpx.AsyncClient() as client:
+                print(f"Tentando baixar documento da URL: {document_url}")
                 response = await client.get(document_url, follow_redirects=True, timeout=30.0)
+                print(f"Status da resposta HTTP para URL: {response.status_code}")
                 response.raise_for_status() # Lança HTTPException para 4xx/5xx responses
             
             # Tenta inferir a extensão do arquivo da URL ou do cabeçalho Content-Type
             content_type = response.headers.get('Content-Type', '').lower()
+            print(f"Content-Type da URL: {content_type}")
             if 'pdf' in content_type or document_url.lower().endswith('.pdf'):
                 file_extension = '.pdf'
             elif 'png' in content_type or document_url.lower().endswith('.png'):
@@ -124,6 +131,7 @@ async def analyze_document(
             local_temp_filepath += file_extension
             s3_document_key = f"textract_uploads/{uuid.uuid4()}{file_extension}"
 
+            print(f"Tentando baixar e salvar arquivo da URL em '{local_temp_filepath}'")
             async with aiofiles.open(local_temp_filepath, 'wb') as out_file:
                 await out_file.write(response.content)
             print(f"Arquivo de URL '{document_url}' baixado para '{local_temp_filepath}'.")
@@ -182,23 +190,25 @@ async def analyze_document(
             print(f"Job {job_id} falhou com status: {current_status}. Tarefas de limpeza agendadas.")
             raise HTTPException(status_code=500, detail=f"A análise do documento falhou. Status: {current_status}. Job ID: {job_id}")
 
-    except HTTPException as e:
-        print(f"HTTPException capturada: {e.detail}. Realizando limpeza...")
-        # Se um HTTPException for lançado, ele já contém o status_code e detail
+    except httpx.RequestError as e:
+        print(f"HTTPX RequestError capturado: {e}. Realizando limpeza...")
         if os.path.exists(local_temp_filepath):
             background_tasks.add_task(os.remove, local_temp_filepath)
-        # Tenta deletar o objeto S3 se o upload ocorreu mas o Textract falhou
-        if job_id and s3_document_key: # Verifica se s3_document_key foi definido
-             background_tasks.add_task(delete_s3_object, s3_document_key)
-        raise e
+        raise HTTPException(status_code=400, detail=f"Erro ao baixar documento da URL: {e}")
+    except httpx.HTTPStatusError as e:
+        print(f"HTTPX HTTPStatusError capturado: {e.response.status_code} - {e.response.text}. Realizando limpeza...")
+        if os.path.exists(local_temp_filepath):
+            background_tasks.add_task(os.remove, local_temp_filepath)
+        raise HTTPException(status_code=e.response.status_code, detail=f"Erro HTTP ao baixar documento da URL: {e.response.status_code} - {e.response.text}")
     except Exception as e:
-        print(f"Exceção inesperada capturada: {e}. Realizando limpeza...")
+        # CORREÇÃO: Imprimir a string da exceção
+        print(f"Exceção INESPERADA capturada no bloco principal: {type(e).__name__}. Detalhes: {str(e)}. Realizando limpeza...")
         # Limpeza em caso de qualquer outra exceção inesperada
         if os.path.exists(local_temp_filepath):
             background_tasks.add_task(os.remove, local_temp_filepath)
         if job_id and s3_document_key: # Verifica se s3_document_key foi definido
             background_tasks.add_task(delete_s3_object, s3_document_key)
-        raise HTTPException(status_code=500, detail=f"Erro interno do servidor: {e}. Job ID: {job_id}")
+        raise HTTPException(status_code=500, detail=f"Erro interno do servidor: {str(e)}. Job ID: {job_id}")
     finally:
         print("--- FIM DA EXECUÇÃO DO /analyze_document/ ---")
 
@@ -275,4 +285,3 @@ async def get_analysis_results(job_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=f"Erro ao obter resultados do job: {e}")
     finally:
         print(f"--- FIM DA EXECUÇÃO DO /get_analysis_results/{job_id} ---")
-
