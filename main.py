@@ -34,8 +34,8 @@ app = FastAPI(
 def format_duration(seconds: float) -> str:
     """Formata a duração em HH:MM:SS.millis."""
     millis = int((seconds - int(seconds)) * 1000)
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
+    h = int((seconds % 3600) // 60)
+    m = int(seconds % 60)
     s = int(seconds % 60)
     return f"{h:02}:{m:02}:{s:02}.{millis:03}"
 
@@ -69,25 +69,31 @@ async def analyze_document(
     inicia um trabalho de análise com AWS Textract, aguarda a conclusão e retorna o texto limpo.
     Um dos dois parâmetros (file ou document_url) deve ser fornecido.
     """
+    print("--- INÍCIO DA EXECUÇÃO DO /analyze_document/ ---")
     if not file and not document_url:
+        print("Erro: Nenhum arquivo ou URL fornecido.")
         raise HTTPException(status_code=400, detail="Por favor, forneça um arquivo ou uma URL de documento.")
     if file and document_url:
+        print("Erro: Ambos arquivo e URL fornecidos.")
         raise HTTPException(status_code=400, detail="Forneça apenas um: arquivo ou URL de documento, não ambos.")
 
     file_extension: str
     original_source_identifier: str # Identifica se veio de arquivo ou URL
     s3_document_key: str
     local_temp_filepath: str = f"/tmp/{uuid.uuid4()}" # Base para o caminho temporário local
+    print(f"local_temp_filepath: {local_temp_filepath}")
     job_id: str = "" # Inicializa job_id para garantir que esteja definido
 
     try:
         if file:
+            print(f"Processando upload de arquivo: {file.filename}")
             original_source_identifier = file.filename
             file_extension = os.path.splitext(file.filename)[1].lower()
             local_temp_filepath += file_extension # Adiciona extensão ao caminho temporário
             s3_document_key = f"textract_uploads/{uuid.uuid4()}{file_extension}"
 
             if file_extension not in ('.pdf', '.png', '.jpeg', '.jpg'):
+                print(f"Erro: Formato de arquivo não suportado: {file_extension}")
                 raise HTTPException(status_code=400, detail="Formato de arquivo não suportado. Use PDF, PNG ou JPEG.")
 
             # Salva o arquivo enviado localmente (temporariamente)
@@ -97,6 +103,7 @@ async def analyze_document(
             print(f"Arquivo '{original_source_identifier}' salvo temporariamente em '{local_temp_filepath}'.")
 
         elif document_url:
+            print(f"Processando documento de URL: {document_url}")
             original_source_identifier = document_url # Para fins de registro, usa a URL como "nome original"
             async with httpx.AsyncClient() as client:
                 response = await client.get(document_url, follow_redirects=True, timeout=30.0)
@@ -111,6 +118,7 @@ async def analyze_document(
             elif 'jpeg' in content_type or 'jpg' in content_type or document_url.lower().endswith(('.jpeg', '.jpg')):
                 file_extension = '.jpg'
             else:
+                print(f"Erro: Não foi possível determinar o tipo de arquivo da URL: {document_url}. Content-Type: {content_type}")
                 raise HTTPException(status_code=400, detail="Não foi possível determinar o tipo de arquivo da URL. Formatos suportados: PDF, PNG, JPEG.")
 
             local_temp_filepath += file_extension
@@ -121,36 +129,45 @@ async def analyze_document(
             print(f"Arquivo de URL '{document_url}' baixado para '{local_temp_filepath}'.")
 
         # 2. Faz o upload do arquivo temporário para o S3
+        print(f"Iniciando upload para S3 para a chave: {s3_document_key}")
         await upload_file_to_s3(local_temp_filepath, s3_document_key)
+        print("Upload para S3 concluído.")
         
         # 3. Inicia o trabalho do Textract
+        print(f"Iniciando job do Textract para a chave S3: {s3_document_key}")
         job_id = start_textract_job(s3_document_key) 
+        print(f"Job do Textract iniciado com Job ID: {job_id}")
 
         # --- LÓGICA DE ESPERA E OBTENÇÃO DE RESULTADOS SÍNCRONA ---
         current_status = "IN_PROGRESS"
         start_time_dt = datetime.now()
+        print("Aguardando conclusão do job do Textract...")
 
         while current_status == 'IN_PROGRESS':
             status_response, _ = is_job_complete(job_id)
             current_status = status_response
             if current_status == 'IN_PROGRESS':
-                print(f"Job {job_id} ainda em andamento. Aguardando...")
+                print(f"Job {job_id} ainda em andamento. Verificando novamente em 5 segundos...")
                 time.sleep(5) # Espera 5 segundos antes de verificar novamente
 
         end_time_dt = datetime.now()
         duration_seconds = (end_time_dt - start_time_dt).total_seconds()
         formatted_duration = format_duration(duration_seconds)
+        print(f"Job {job_id} concluído com status: {current_status}. Duração: {formatted_duration}")
 
         if current_status == 'SUCCEEDED':
+            print(f"Job {job_id} bem-sucedido. Obtendo resultados...")
             textract_pages_data = get_job_results(job_id)
             all_lines = extract_lines_from_textract_response(textract_pages_data)
             
             full_extracted_text = "\n".join(all_lines)
             cleaned_text = sanitize_text_for_sql(full_extracted_text)
+            print("Texto extraído e sanitizado com sucesso.")
             
             # Limpa o arquivo S3 e local em background após o processamento
             background_tasks.add_task(delete_s3_object, s3_document_key)
             background_tasks.add_task(os.remove, local_temp_filepath)
+            print("Tarefas de limpeza (S3 e local) agendadas em segundo plano.")
 
             return JSONResponse(content={
                 "job_id": job_id,
@@ -162,9 +179,11 @@ async def analyze_document(
             # Se o job falhou, limpa o S3 e o arquivo local
             background_tasks.add_task(delete_s3_object, s3_document_key)
             background_tasks.add_task(os.remove, local_temp_filepath)
+            print(f"Job {job_id} falhou com status: {current_status}. Tarefas de limpeza agendadas.")
             raise HTTPException(status_code=500, detail=f"A análise do documento falhou. Status: {current_status}. Job ID: {job_id}")
 
     except HTTPException as e:
+        print(f"HTTPException capturada: {e.detail}. Realizando limpeza...")
         # Se um HTTPException for lançado, ele já contém o status_code e detail
         if os.path.exists(local_temp_filepath):
             background_tasks.add_task(os.remove, local_temp_filepath)
@@ -173,12 +192,16 @@ async def analyze_document(
              background_tasks.add_task(delete_s3_object, s3_document_key)
         raise e
     except Exception as e:
+        print(f"Exceção inesperada capturada: {e}. Realizando limpeza...")
         # Limpeza em caso de qualquer outra exceção inesperada
         if os.path.exists(local_temp_filepath):
             background_tasks.add_task(os.remove, local_temp_filepath)
         if job_id and s3_document_key: # Verifica se s3_document_key foi definido
             background_tasks.add_task(delete_s3_object, s3_document_key)
         raise HTTPException(status_code=500, detail=f"Erro interno do servidor: {e}. Job ID: {job_id}")
+    finally:
+        print("--- FIM DA EXECUÇÃO DO /analyze_document/ ---")
+
 
 @app.get("/get_analysis_status/{job_id}", summary="Verifica o status de um trabalho de análise do Textract")
 async def get_analysis_status(job_id: str):
@@ -189,15 +212,21 @@ async def get_analysis_status(job_id: str):
     Este endpoint é mantido para compatibilidade, mas não funciona mais
     para jobs históricos após um restart, pois o estado não é persistente.
     """
+    print(f"--- INÍCIO DA EXECUÇÃO DO /get_analysis_status/{job_id} ---")
     try:
         current_status, _ = is_job_complete(job_id)
+        print(f"Status do job {job_id} obtido do Textract: {current_status}")
         # Não há armazenamento em memória, então apenas retorna o status atual diretamente do Textract
         return JSONResponse(content={"job_id": job_id, "status": current_status})
     except HTTPException as e:
-        # Captura HTTPException de is_job_complete (ex: Job ID inválido)
+        print(f"HTTPException em /get_analysis_status/: {e.detail}")
         raise e
     except Exception as e:
+        print(f"Exceção inesperada em /get_analysis_status/: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao verificar status do job: {e}")
+    finally:
+        print(f"--- FIM DA EXECUÇÃO DO /get_analysis_status/{job_id} ---")
+
 
 @app.get("/get_analysis_results/{job_id}", summary="Obtém o texto limpo de um trabalho de análise do Textract")
 async def get_analysis_results(job_id: str, background_tasks: BackgroundTasks):
@@ -209,22 +238,26 @@ async def get_analysis_results(job_id: str, background_tasks: BackgroundTasks):
     Este endpoint é mantido para compatibilidade, mas não funciona mais
     para jobs históricos após um restart, pois o estado não é persistente.
     """
+    print(f"--- INÍCIO DA EXECUÇÃO DO /get_analysis_results/{job_id} ---")
     try:
         # Aguarda a conclusão do job, se necessário
         current_status = "IN_PROGRESS"
+        print(f"Verificando status do job {job_id} para obter resultados...")
         while current_status == 'IN_PROGRESS':
             status_response, _ = is_job_complete(job_id)
             current_status = status_response
             if current_status == 'IN_PROGRESS':
-                print(f"Job {job_id} ainda em andamento. Aguardando...")
+                print(f"Job {job_id} ainda em andamento. Aguardando para obter resultados...")
                 time.sleep(5)
 
         if current_status == 'SUCCEEDED':
+            print(f"Job {job_id} bem-sucedido. Recuperando e processando resultados...")
             textract_pages_data = get_job_results(job_id)
             all_lines = extract_lines_from_textract_response(textract_pages_data)
             
             full_extracted_text = "\n".join(all_lines)
             cleaned_text = sanitize_text_for_sql(full_extracted_text)
+            print(f"Resultados para job {job_id} obtidos e texto limpo.")
             
             # Não há s3_key armazenada em memória para limpeza automática aqui.
             # Se você precisar da limpeza aqui, o s3_key precisaria ser passado ou buscado.
@@ -232,8 +265,14 @@ async def get_analysis_results(job_id: str, background_tasks: BackgroundTasks):
             
             return JSONResponse(content={"job_id": job_id, "cleaned_text": cleaned_text})
         else:
+            print(f"Job {job_id} não foi bem-sucedido. Status: {current_status}.")
             raise HTTPException(status_code=500, detail=f"A análise do documento falhou. Status: {current_status}. Job ID: {job_id}")
     except HTTPException as e:
+        print(f"HTTPException em /get_analysis_results/: {e.detail}")
         raise e
     except Exception as e:
+        print(f"Exceção inesperada em /get_analysis_results/: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao obter resultados do job: {e}")
+    finally:
+        print(f"--- FIM DA EXECUÇÃO DO /get_analysis_results/{job_id} ---")
+
