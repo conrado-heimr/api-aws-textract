@@ -1,7 +1,6 @@
 #textract_service/aws_clients.py
 import boto3
-import os
-
+from botocore.config import Config
 
 # Configurações do AWS S3 e Textract
 # ATENÇÃO: Substitua 'YOUR_S3_BUCKET_NAME' pelo nome do seu bucket S3.
@@ -9,6 +8,16 @@ import os
 # (variáveis de ambiente, ~/.aws/credentials, etc.)
 AWS_REGION = "us-east-1"
 S3_BUCKET_NAME = "teste-textract-conrado" 
+
+# Configuração de timeout para o Boto3
+# Conexão: 60 segundos
+# Leitura/Resposta: 1800 segundos (30 minutos)
+# Retentativas: 10 vezes
+boto3_config = Config(
+    connect_timeout=60,
+    read_timeout=1800, # MUITO IMPORTANTE para documentos grandes!
+    retries={'max_attempts': 10}
+)
 
 # Inicializa a sessão Boto3
 # Certifique-se de que as credenciais AWS estão configuradas no ambiente de execução da aplicação

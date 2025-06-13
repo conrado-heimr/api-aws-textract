@@ -178,3 +178,6 @@ Variáveis de Ambiente: As configurações da AWS (como S3_BUCKET_NAME e AWS_REG
 
 Licença
 Este projeto é de código aberto e está disponível sob a licença MIT.
+
+
+gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8002 --log-level info
