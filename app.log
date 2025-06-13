@@ -171,3 +171,159 @@
 2025-06-13 18:11:56,768 - INFO - --- FIM DA EXECUÇÃO DO /analyze_document/ --- [method=POST, endpoint=/analyze_document/, status_code=None]
 2025-06-13 18:11:56,868 - INFO - Tentando excluir o objeto S3: textract_uploads/b2b85840-eb36-48e2-b591-66077d513995.pdf do bucket: teste-textract-conrado [method=None, endpoint=None, status_code=None]
 2025-06-13 18:11:57,487 - INFO - Objeto S3 'textract_uploads/b2b85840-eb36-48e2-b591-66077d513995.pdf' excluído com sucesso. [method=None, endpoint=None, status_code=None]
+2025-06-13 19:10:24,661 - INFO - --- INÍCIO DA EXECUÇÃO DO /analyze_document/ --- [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:10:24,662 - INFO - local_temp_filepath (base): /tmp/54df6199-11d5-4f97-bea7-de957fe2dbb6 [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:10:24,662 - INFO - Processando documento de URL: https://transparencia.pmspa.rj.gov.br/ver20240713/tmp/lai_lei_loa/451CC597-A0E7-4777-BE4D-78AF0BE29F11_Loa-2025.pdf [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:10:24,689 - INFO - Tentando baixar documento da URL: https://transparencia.pmspa.rj.gov.br/ver20240713/tmp/lai_lei_loa/451CC597-A0E7-4777-BE4D-78AF0BE29F11_Loa-2025.pdf [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:10:54,794 - ERROR - HTTPX RequestError capturado: . Realizando limpeza do arquivo local se existir. [method=POST, endpoint=/analyze_document/, status_code=None]
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_transports/default.py", line 69, in map_httpcore_exceptions
+    yield
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_transports/default.py", line 373, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        pool_request.request
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpcore/_async/connection.py", line 103, in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpcore/_async/http11.py", line 136, in handle_async_request
+    raise exc
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpcore/_async/http11.py", line 106, in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpcore/_async/http11.py", line 177, in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpcore/_async/http11.py", line 217, in _receive_event
+    data = await self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.READ_NUM_BYTES, timeout=timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpcore/_backends/anyio.py", line 32, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/rafaelconrado/Desktop/projetos/modernização /api-aws-textract/main.py", line 161, in analyze_document
+    response = await client.get(document_url, follow_redirects=True, timeout=30.0)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_client.py", line 1801, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_client.py", line 1574, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_client.py", line 1661, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_client.py", line 1689, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_client.py", line 1726, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_client.py", line 1763, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_transports/default.py", line 372, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/httpx/_transports/default.py", line 86, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout
+2025-06-13 19:10:54,810 - INFO - --- FIM DA EXECUÇÃO DO /analyze_document/ --- [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:08,088 - INFO - --- INÍCIO DA EXECUÇÃO DO /analyze_document/ --- [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:08,091 - INFO - local_temp_filepath (base): /tmp/bbd8531b-830a-46b0-9bb7-7b757dfae355 [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:08,091 - INFO - Processando documento de URL: https://transparencia.pmspa.rj.gov.br/ver20240713/tmp/lai_lei_loa/451CC597-A0E7-4777-BE4D-78AF0BE29F11_Loa-2025.pdf [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:08,127 - INFO - Tentando baixar documento da URL: https://transparencia.pmspa.rj.gov.br/ver20240713/tmp/lai_lei_loa/451CC597-A0E7-4777-BE4D-78AF0BE29F11_Loa-2025.pdf [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:16,376 - INFO - Status da resposta HTTP para URL: 200 [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:16,378 - INFO - Content-Type da URL: application/pdf [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:16,379 - INFO - Tentando baixar e salvar arquivo da URL em '/tmp/bbd8531b-830a-46b0-9bb7-7b757dfae355.pdf' [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:16,451 - INFO - Arquivo de URL 'https://transparencia.pmspa.rj.gov.br/ver20240713/tmp/lai_lei_loa/451CC597-A0E7-4777-BE4D-78AF0BE29F11_Loa-2025.pdf' baixado para '/tmp/bbd8531b-830a-46b0-9bb7-7b757dfae355.pdf'. [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:16,453 - INFO - Iniciando upload para S3 para a chave: textract_uploads/79286fe5-834b-428d-85b4-cf8e6c9e931c.pdf [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:16,453 - INFO - Tentando fazer upload do arquivo local: /tmp/bbd8531b-830a-46b0-9bb7-7b757dfae355.pdf para o bucket: teste-textract-conrado com a chave: textract_uploads/79286fe5-834b-428d-85b4-cf8e6c9e931c.pdf [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:56,544 - INFO - Upload de '/tmp/bbd8531b-830a-46b0-9bb7-7b757dfae355.pdf' para s3://teste-textract-conrado/textract_uploads/79286fe5-834b-428d-85b4-cf8e6c9e931c.pdf concluído com sucesso. [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:56,548 - INFO - Upload para S3 concluído. [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:56,549 - INFO - Iniciando job do Textract para a chave S3: textract_uploads/79286fe5-834b-428d-85b4-cf8e6c9e931c.pdf [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:57,602 - INFO - Job do Textract iniciado com Job ID: 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:57,603 - INFO - Job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 iniciado. Retornando Job ID para o cliente. Cliente deve consultar status e resultados. [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:57,604 - INFO - Agendada exclusão do arquivo temporário local: /tmp/bbd8531b-830a-46b0-9bb7-7b757dfae355.pdf [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:14:57,605 - INFO - --- FIM DA EXECUÇÃO DO /analyze_document/ --- [method=POST, endpoint=/analyze_document/, status_code=None]
+2025-06-13 19:16:47,738 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:48,409 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:48,411 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:50,510 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:50,660 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:50,663 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:52,173 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:52,327 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:52,329 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:53,299 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:53,451 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:53,454 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:54,521 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:54,679 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:16:54,682 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:00,233 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:00,396 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:00,397 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:01,137 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:01,288 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:01,290 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:01,915 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:02,072 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:02,076 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:02,725 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:02,880 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:02,881 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:04,801 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:04,957 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:04,959 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:05,854 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:06,517 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:06,519 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:07,544 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:07,782 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:07,786 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:08,720 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:08,877 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:08,878 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:09,756 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:09,911 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:09,914 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:10,666 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:10,827 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:10,829 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:12,333 - INFO - --- INÍCIO DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:12,491 - INFO - Status do job 6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 obtido do Textract: IN_PROGRESS [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]
+2025-06-13 19:17:12,494 - INFO - --- FIM DA EXECUÇÃO DO /get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1 --- [method=GET, endpoint=/get_analysis_status/6536cfa42afae194feeb98110991da6c3ebd9b029bbc4ec7b98854113ec375c1, status_code=None]

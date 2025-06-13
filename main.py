@@ -105,9 +105,8 @@ async def read_root():
     </html>
     """
 
----
+
 ### **Endpoint Modificado: `/analyze_document/`**
----
 @app.post("/analyze_document/", summary="Inicia a análise de um documento PDF/Imagem e retorna o Job ID para consulta posterior.")
 async def analyze_document(
     background_tasks: BackgroundTasks,
@@ -232,9 +231,9 @@ async def analyze_document(
     finally:
         logger.info("--- FIM DA EXECUÇÃO DO /analyze_document/ ---")
 
----
+
 ### **Endpoint Existente: `/get_analysis_status/{job_id}` (Mantido como está)**
----
+
 @app.get("/get_analysis_status/{job_id}", summary="Verifica o status de um trabalho de análise do Textract")
 async def get_analysis_status(job_id: str):
     """
@@ -255,9 +254,9 @@ async def get_analysis_status(job_id: str):
     finally:
         logger.info(f"--- FIM DA EXECUÇÃO DO /get_analysis_status/{job_id} ---")
 
----
+
 ### **Endpoint Existente: `/get_analysis_results/{job_id}` (Agora é responsável pela limpeza final do S3)**
----
+
 @app.get("/get_analysis_results/{job_id}", summary="Obtém o texto limpo de um trabalho de análise do Textract")
 async def get_analysis_results(job_id: str, background_tasks: BackgroundTasks):
     """
