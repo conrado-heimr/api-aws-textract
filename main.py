@@ -1,9 +1,6 @@
-# Importações necessárias
-import boto3
+# Importações necessárias (manter as atuais)
 import time
-import json
 import os
-import re
 import uuid
 import aiofiles
 import httpx
@@ -13,7 +10,6 @@ from typing import Dict, List, Any, Optional
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 
 # --- ADIÇÃO PARA LOGGING PERSONALIZADO ---
 import logging
@@ -21,42 +17,35 @@ from logging.handlers import RotatingFileHandler
 from utils.custom_log_filter import request_context_filter # IMPORTA SEU FILTRO PERSONALIZADO
 
 # Importa as funções e clientes dos novos módulos
-from textract_service.aws_clients import S3_BUCKET_NAME, textract_client, s3_client
+from textract_service.aws_clients import S3_BUCKET_NAME 
 from textract_service.textract_logic import start_textract_job, is_job_complete, get_job_results, extract_lines_from_textract_response
 from textract_service.s3_operations import upload_file_to_s3, delete_s3_object, get_file_size_mb
 from utils.text_sanitizer import sanitize_text_for_sql
 
 # --- CONFIGURAÇÃO DO LOGGER ---
-# Define o arquivo de log no mesmo diretório da aplicação
-LOG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.log") 
+LOG_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.log")
 LOG_MAX_BYTES = 5 * 1024 * 1024 # 5 MB
 LOG_BACKUP_COUNT = 10 # Manter 10 arquivos de backup
 
-# Garante que o diretório de log exista (neste caso, será o diretório da app)
 os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)
 
 logger = logging.getLogger("BrokerAPI")
-logger.setLevel(logging.INFO) # Nível do log: DEBUG, INFO, WARNING, ERROR, CRITICAL
+logger.setLevel(logging.INFO)
 
-# Formato do log com campos personalizados
 log_format = logging.Formatter(
     '%(asctime)s - %(levelname)s - %(message)s [method=%(method)s, endpoint=%(endpoint)s, status_code=%(status_code)s]'
 )
 
-# Handler para o arquivo (com rotação)
 file_handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
 file_handler.setFormatter(log_format)
 logger.addHandler(file_handler)
 
-# Handler para console (para que os logs também apareçam na saída padrão/journalctl)
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(log_format)
 logger.addHandler(console_handler)
 
-# Adicione o filtro personalizado ao logger
 logger.addFilter(request_context_filter)
 
-# Inicializa a aplicação FastAPI
 app = FastAPI(
     title="AWS Textract Document Analysis API",
     description="API para analisar documentos PDF/Imagens usando AWS Textract, com upload direto e retorno de resultados.",
@@ -64,15 +53,13 @@ app = FastAPI(
     root_path="/textract"
 )
 
-# --- MIDDLEWARE PARA INJETAR CONTEXTO DE REQUISIÇÃO NO LOGGER ---
 @app.middleware("http")
 async def add_request_context_to_logs(request: Request, call_next):
-    # Definir o contexto da requisição no filtro antes de processar
     request_context_filter.method = request.method
     request_context_filter.endpoint = request.url.path
-    request_context_filter.status_code = None # Define como None inicialmente, será atualizado após a resposta
+    request_context_filter.status_code = None
 
-    response = Response("Internal server error", status_code=500) # Default em caso de erro
+    response = Response("Internal server error", status_code=500)
     try:
         response = await call_next(request)
     except HTTPException as http_exc:
@@ -84,31 +71,25 @@ async def add_request_context_to_logs(request: Request, call_next):
         logger.critical(f"Exceção CRÍTICA não tratada durante a requisição: {str(e)}", exc_info=True)
         raise e
     finally:
-        # Atualiza o status_code após a resposta (se não foi um HTTPException)
         if request_context_filter.status_code is None:
             request_context_filter.status_code = response.status_code
-        # Limpar o contexto para a próxima requisição
         request_context_filter.method = None
         request_context_filter.endpoint = None
         request_context_filter.status_code = None
         return response
 
-# --- Configuração do Diretório Temporário ---
 TEMP_FILES_DIR = os.getenv("TEMP_FILES_DIR", "/tmp")
 
-# --- Funções Auxiliares Comuns ---
 def format_duration(seconds: float) -> str:
     """Formata a duração em HH:MM:SS.millis."""
     millis = int((seconds - int(seconds)) * 1000)
-    h = int((seconds % 3600) // 60)
-    m = int(seconds % 60)
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
     return f"{h:02}:{m:02}:{s:02}.{millis:03}"
 
-# --- Endpoints da FastAPI ---
 @app.get("/", response_class=HTMLResponse, summary="Página inicial")
 async def read_root():
-    """Retorna uma página HTML simples para a raiz da API."""
     logger.info("Acessando página inicial.")
     return """
     <html>
@@ -117,14 +98,17 @@ async def read_root():
         </head>
         <body>
             <h1>Bem-vindo à API de Análise de Documentos com AWS Textract</h1>
-            <p>Use o endpoint <code>/analyze_document/</code> para enviar um documento ou fornecer uma URL e obter o texto direto.</p>
-            <p>Os endpoints de status e resultados separados são para referência em ambientes persistentes.</p>
+            <p>Use o endpoint <code>/analyze_document/</code> para enviar um documento ou fornecer uma URL e obter o <b>ID do Job</b>.</p>
+            <p>Em seguida, use <code>/get_analysis_status/{job_id}</code> para verificar o status e <code>/get_analysis_results/{job_id}</code> para obter os resultados quando o job estiver concluído.</p>
             <p>Você pode testar a API através da interface Swagger UI em <a href="/docs">/docs</a> ou ReDoc em <a href="/redoc">/redoc</a>.</p>
         </body>
     </html>
     """
 
-@app.post("/analyze_document/", summary="Analisa um documento PDF/Imagem enviado ou de uma URL e retorna o texto extraído diretamente")
+---
+### **Endpoint Modificado: `/analyze_document/`**
+---
+@app.post("/analyze_document/", summary="Inicia a análise de um documento PDF/Imagem e retorna o Job ID para consulta posterior.")
 async def analyze_document(
     background_tasks: BackgroundTasks,
     file: Optional[UploadFile] = File(None, description="O documento (PDF, JPEG, PNG) a ser analisado (upload)."),
@@ -132,7 +116,9 @@ async def analyze_document(
 ):
     """
     Recebe um arquivo de documento via upload ou uma URL, faz o download/upload para S3,
-    inicia um trabalho de análise com AWS Textract, aguarda a conclusão e retorna o texto limpo.
+    e **IMEDIATAMENTE** inicia um trabalho de análise com AWS Textract, retornando o Job ID.
+    A responsabilidade de verificar o status e obter os resultados é do cliente, usando
+    os endpoints `/get_analysis_status/{job_id}` e `/get_analysis_results/{job_id}`.
     Um dos dois parâmetros (file ou document_url) deve ser fornecido.
     """
     logger.info("--- INÍCIO DA EXECUÇÃO DO /analyze_document/ ---")
@@ -145,10 +131,10 @@ async def analyze_document(
 
     file_extension: str
     original_source_identifier: str
-    s3_document_key: str
+    s3_document_key: str = "" # Inicializa para garantir que exista
     local_temp_filepath: str = os.path.join(TEMP_FILES_DIR, str(uuid.uuid4()))
     logger.info(f"local_temp_filepath (base): {local_temp_filepath}")
-    job_id: str = ""
+    job_id: str = "" # Inicializa para garantir que exista
 
     try:
         if file:
@@ -175,7 +161,7 @@ async def analyze_document(
                 logger.info(f"Tentando baixar documento da URL: {document_url}")
                 response = await client.get(document_url, follow_redirects=True, timeout=30.0)
                 logger.info(f"Status da resposta HTTP para URL: {response.status_code}")
-                response.raise_for_status()
+                response.raise_for_status() # Levanta exceção para status 4xx/5xx
             
             content_type = response.headers.get('Content-Type', '').lower()
             logger.info(f"Content-Type da URL: {content_type}")
@@ -205,68 +191,50 @@ async def analyze_document(
         job_id = await start_textract_job(s3_document_key) 
         logger.info(f"Job do Textract iniciado com Job ID: {job_id}")
 
-        current_status = "IN_PROGRESS"
-        start_time_dt = datetime.now()
-        logger.info("Aguardando conclusão do job do Textract...")
+        # --- A GRANDE MUDANÇA: REMOÇÃO DO LOOP DE POLLING E RETORNO IMEDIATO ---
+        logger.info(f"Job {job_id} iniciado. Retornando Job ID para o cliente. Cliente deve consultar status e resultados.")
+        
+        # Agendando limpeza para o arquivo local imediatamente, pois o S3 é persistente
+        # A limpeza do S3 DEPOIS da conclusão do job será feita pelo endpoint de resultados.
+        background_tasks.add_task(os.remove, local_temp_filepath)
+        logger.info(f"Agendada exclusão do arquivo temporário local: {local_temp_filepath}")
 
-        while current_status == 'IN_PROGRESS':
-            status_response, _ = await is_job_complete(job_id)
-            current_status = status_response
-            if current_status == 'IN_PROGRESS':
-                logger.info(f"Job {job_id} ainda em andamento. Verificando novamente em 5 segundos...")
-                await asyncio.sleep(5)
-
-        end_time_dt = datetime.now()
-        duration_seconds = (end_time_dt - start_time_dt).total_seconds()
-        formatted_duration = format_duration(duration_seconds)
-        logger.info(f"Job {job_id} concluído com status: {current_status}. Duração: {formatted_duration}")
-
-        if current_status == 'SUCCEEDED':
-            logger.info(f"Job {job_id} bem-sucedido. Obtendo resultados...")
-            textract_pages_data = await get_job_results(job_id)
-            all_lines = extract_lines_from_textract_response(textract_pages_data)
-            
-            full_extracted_text = "\n".join(all_lines)
-            cleaned_text = sanitize_text_for_sql(full_extracted_text)
-            logger.info("Texto extraído e sanitizado com sucesso.")
-            
-            background_tasks.add_task(delete_s3_object, s3_document_key)
-            background_tasks.add_task(os.remove, local_temp_filepath)
-            logger.info("Tarefas de limpeza (S3 e local) agendadas em segundo plano.")
-
-            return JSONResponse(content={
-                "job_id": job_id,
-                "status": current_status,
-                "duration": formatted_duration,
-                "cleaned_text": cleaned_text
-            }, status_code=200)
-        else:
-            background_tasks.add_task(delete_s3_object, s3_document_key)
-            background_tasks.add_task(os.remove, local_temp_filepath)
-            logger.error(f"Job {job_id} falhou com status: {current_status}. Tarefas de limpeza agendadas.")
-            raise HTTPException(status_code=500, detail=f"A análise do documento falhou. Status: {current_status}. Job ID: {job_id}")
+        return JSONResponse(content={
+            "message": "Análise do documento iniciada com sucesso.",
+            "job_id": job_id,
+            "s3_document_key": s3_document_key, # Útil para referência, mas não deve ser exposto ao cliente final se houver preocupação de segurança.
+            "status_check_endpoint": f"/textract/get_analysis_status/{job_id}",
+            "results_endpoint": f"/textract/get_analysis_results/{job_id}"
+        }, status_code=202) # Status 202 Accepted indica que a requisição foi aceita para processamento.
 
     except httpx.RequestError as e:
-        logger.error(f"HTTPX RequestError capturado: {str(e)}. Realizando limpeza...")
+        logger.error(f"HTTPX RequestError capturado: {str(e)}. Realizando limpeza do arquivo local se existir.", exc_info=True)
         if os.path.exists(local_temp_filepath):
             background_tasks.add_task(os.remove, local_temp_filepath)
-        raise HTTPException(status_code=400, detail=f"Erro ao baixar documento da URL: {e}")
+        # Não tentamos deletar do S3 aqui, pois pode não ter sido enviado ainda
+        raise HTTPException(status_code=400, detail=f"Erro ao baixar documento da URL: {e}. Verifique a URL e a conectividade.")
     except httpx.HTTPStatusError as e:
-        logger.error(f"HTTPX HTTPStatusError capturado: {e.response.status_code} - {e.response.text}. Realizando limpeza...")
+        logger.error(f"HTTPX HTTPStatusError capturado: {e.response.status_code} - {e.response.text}. Realizando limpeza do arquivo local se existir.", exc_info=True)
         if os.path.exists(local_temp_filepath):
             background_tasks.add_task(os.remove, local_temp_filepath)
-        raise HTTPException(status_code=e.response.status_code, detail=f"Erro HTTP ao baixar documento da URL: {e.response.status_code} - {e.response.text}")
+        # Não tentamos deletar do S3 aqui
+        raise HTTPException(status_code=e.response.status_code, detail=f"Erro HTTP ao baixar documento da URL: {e.response.status_code} - {e.response.text}. Verifique a URL.")
     except Exception as e:
         logger.error(f"Exceção INESPERADA capturada no bloco principal: {type(e).__name__}. Detalhes: {str(e)}. Realizando limpeza...", exc_info=True)
+        # Limpeza é crucial aqui: se houve erro antes de retornar o job_id, o S3 pode ter ficado com o arquivo.
         if os.path.exists(local_temp_filepath):
             background_tasks.add_task(os.remove, local_temp_filepath)
-        if job_id and s3_document_key:
+        # Tenta deletar do S3 SOMENTE se s3_document_key já foi definido (ou seja, upload já ocorreu ou começou)
+        if s3_document_key:
             background_tasks.add_task(delete_s3_object, s3_document_key)
-        raise HTTPException(status_code=500, detail=f"Erro interno do servidor: {str(e)}. Job ID: {job_id}")
+            logger.info(f"Agendada exclusão do objeto S3 '{s3_document_key}' devido a erro na inicialização do job.")
+        raise HTTPException(status_code=500, detail=f"Erro interno do servidor ao iniciar análise: {str(e)}. Job ID (se gerado): {job_id}")
     finally:
         logger.info("--- FIM DA EXECUÇÃO DO /analyze_document/ ---")
 
-
+---
+### **Endpoint Existente: `/get_analysis_status/{job_id}` (Mantido como está)**
+---
 @app.get("/get_analysis_status/{job_id}", summary="Verifica o status de um trabalho de análise do Textract")
 async def get_analysis_status(job_id: str):
     """
@@ -287,24 +255,51 @@ async def get_analysis_status(job_id: str):
     finally:
         logger.info(f"--- FIM DA EXECUÇÃO DO /get_analysis_status/{job_id} ---")
 
-
+---
+### **Endpoint Existente: `/get_analysis_results/{job_id}` (Agora é responsável pela limpeza final do S3)**
+---
 @app.get("/get_analysis_results/{job_id}", summary="Obtém o texto limpo de um trabalho de análise do Textract")
 async def get_analysis_results(job_id: str, background_tasks: BackgroundTasks):
     """
     Obtém o texto extraído limpo de um trabalho de análise do Textract
-    dado o Job ID. Aguarda a conclusão se o job ainda estiver em andamento.
+    dado o Job ID. **Este endpoint ainda fará o polling interno** se o job estiver
+    em andamento, mas o cliente será o responsável por chamá-lo apenas quando
+    o status for SUCCEEDED (ou se quiser que ele espere).
     Retorna apenas o texto limpo, sem caracteres inválidos para SQL Server.
+    **ATENÇÃO:** Este endpoint é responsável por AGENDAR a exclusão do objeto S3
+    após a obtenção dos resultados para liberar espaço e dados sensíveis.
     """
     logger.info(f"--- INÍCIO DA EXECUÇÃO DO /get_analysis_results/{job_id} ---")
+    s3_document_key: str = "" # Necessário inicializar para o bloco finally
+
     try:
         current_status = "IN_PROGRESS"
         logger.info(f"Verificando status do job {job_id} para obter resultados...")
+        start_time_dt = datetime.now() # Adicionado para medir a duração total da espera E processamento
+
+        # Adicionei um limite de tempo para este polling interno para evitar que este endpoint bloqueie por horas
+        # Idealmente, o cliente chamaria `get_analysis_status` primeiro.
+        # Ajuste `max_wait_seconds` conforme sua necessidade de tolerância.
+        max_wait_seconds = 600 # Exemplo: 10 minutos de espera máxima neste endpoint
+        wait_start_time = time.monotonic()
+
         while current_status == 'IN_PROGRESS':
-            status_response, _ = await is_job_complete(job_id)
+            if time.monotonic() - wait_start_time > max_wait_seconds:
+                logger.warning(f"Timeout de espera excedido ({max_wait_seconds}s) para o job {job_id} no endpoint /get_analysis_results/. Status: {current_status}")
+                raise HTTPException(status_code=504, detail=f"Tempo limite excedido aguardando conclusão do job {job_id}. Tente consultar o status novamente mais tarde.")
+
+            status_response, original_s3_key = await is_job_complete(job_id)
             current_status = status_response
+            s3_document_key = original_s3_key # Captura a chave S3 aqui
             if current_status == 'IN_PROGRESS':
-                logger.info(f"Job {job_id} ainda em andamento. Aguardando para obter resultados...")
+                logger.info(f"Job {job_id} ainda em andamento. Aguardando para obter resultados em 5 segundos...")
                 await asyncio.sleep(5)
+
+        end_time_dt = datetime.now()
+        duration_seconds = (end_time_dt - start_time_dt).total_seconds()
+        formatted_duration = format_duration(duration_seconds)
+        logger.info(f"Job {job_id} concluído com status: {current_status}. Duração da espera (se houver): {formatted_duration}")
+
 
         if current_status == 'SUCCEEDED':
             logger.info(f"Job {job_id} bem-sucedido. Recuperando e processando resultados...")
@@ -315,15 +310,33 @@ async def get_analysis_results(job_id: str, background_tasks: BackgroundTasks):
             cleaned_text = sanitize_text_for_sql(full_extracted_text)
             logger.info(f"Resultados para job {job_id} obtidos e texto limpo.")
             
+            # --- LIMPEZA DO S3 AGORA ACONTECE AQUI ---
+            if s3_document_key: # Garante que a chave S3 foi obtida
+                background_tasks.add_task(delete_s3_object, s3_document_key)
+                logger.info(f"Agendada exclusão do objeto S3 '{s3_document_key}' para o job {job_id}.")
+            else:
+                logger.warning(f"Não foi possível obter s3_document_key para o job {job_id} para agendar a limpeza do S3.")
+
+
             return JSONResponse(content={"job_id": job_id, "cleaned_text": cleaned_text})
         else:
             logger.error(f"Job {job_id} não foi bem-sucedido. Status: {current_status}.")
+            # Se o job falhou, ainda tentamos limpar o S3, se a chave estiver disponível
+            if s3_document_key:
+                background_tasks.add_task(delete_s3_object, s3_document_key)
+                logger.info(f"Agendada exclusão do objeto S3 '{s3_document_key}' para o job {job_id} que falhou.")
+
             raise HTTPException(status_code=500, detail=f"A análise do documento falhou. Status: {current_status}. Job ID: {job_id}")
+
     except HTTPException as e:
         logger.error(f"HTTPException em /get_analysis_results/: {e.detail}")
         raise e
     except Exception as e:
         logger.error(f"Exceção inesperada em /get_analysis_results/: {str(e)}", exc_info=True)
+        # Se houve uma exceção genérica aqui, e o s3_document_key foi obtido
+        if s3_document_key:
+            background_tasks.add_task(delete_s3_object, s3_document_key)
+            logger.info(f"Agendada exclusão do objeto S3 '{s3_document_key}' devido a erro na obtenção dos resultados do job {job_id}.")
         raise HTTPException(status_code=500, detail=f"Erro ao obter resultados do job: {e}")
     finally:
         logger.info(f"--- FIM DA EXECUÇÃO DO /get_analysis_results/{job_id} ---")
