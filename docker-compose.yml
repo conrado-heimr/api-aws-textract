@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: textract-api-container
+    ports:
+      - "8000:8000"
+    restart: always
+    environment:
+      ROOT_PATH: "/textract" # Mantenha esta linha para o subcaminho
+      # Não precisa destas se estiver mapeando o diretório .aws:
+      # AWS_ACCESS_KEY_ID: SEU_ACCESS_KEY_ID
+      # AWS_SECRET_ACCESS_KEY: SEU_SECRET_ACCESS_KEY
+      # AWS_REGION: us-east-1
+    volumes:
+      # Mapeia o diretório .aws do host para o contêiner
+      # O ':ro' no final significa read-only (somente leitura), por segurança
+      - "/root/.aws:/root/.aws:ro" # <<< Certifique-se que esta linha está aqui
